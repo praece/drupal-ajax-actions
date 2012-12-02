@@ -1,0 +1,5 @@
+name = Ajax Actions Edit Field
+description = Hooks that use ajax actions to edit cck fields.
+dependencies[] = ajax_actions
+package = Ajax Actions
+core = 6.x

@@ -1,0 +1,288 @@
+<?php
+
+function ajax_actions_forms_node_ref_views_api() {
+  return array(
+      'api' => '2',
+      'template path' => drupal_get_path('module', 'ajax_actions_forms_node_ref') . '/templates'
+  );
+}
+
+function ajax_actions_forms_node_ref_widget_info() {
+  return array(
+    'inline_node_ref' => array(
+      'label' => t('Inline Node Reference'),
+      'field types' => array('nodereference'),
+      'multiple values' => CONTENT_HANDLE_MODULE,
+      'callbacks' => array(
+        'default value' => CONTENT_CALLBACK_DEFAULT,
+      ),
+    ),
+  );
+}
+
+function ajax_actions_forms_node_ref_widget_settings($op, $widget) {
+  switch ($op) {
+    case 'form':
+      $form = array();
+      $form['input_method'] = array(
+        '#type' => 'select',
+        '#title' => t('Input Method'),
+        '#default_value' => $widget['input_method'] ? $widget['input_method'] : 'dialog',
+        '#options' => array('dialog' => t('Modal Dialog'), 'inline' => t('Inline')),
+        '#required' => TRUE,
+      );
+      $views = array();
+      $all_views = views_get_all_views();
+      foreach ($all_views as $view) {
+        if ($view->base_table == 'node' && !empty($view->display['default']->display_options['fields'])) {
+          $views[$view->name] = $view->name;
+        }
+      }
+      $form['ref_view'] = array(
+        '#type' => 'select',
+        '#title' => t('View'),
+        '#default_value' => $widget['ref_view'] ? $widget['ref_view'] : NULL,
+        '#options' => $views,
+        '#required' => TRUE,
+      );
+      $form['content_link_class'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Add Content Link Class'),
+        '#default_value' => $widget['content_link_class'] ? $widget['content_link_class'] : NULL,
+      );
+      return $form;
+
+    case 'save':
+      return array('input_method', 'ref_view', 'content_link_class');
+  }
+}
+
+function ajax_actions_forms_node_ref_form_alter(&$form, $form_state, $form_id) {
+  if (isset($form['#field'])) {
+    if ($form['#field']['widget']['type'] == 'inline_node_ref') {
+      unset($form['field']['advanced']);
+      $form['field']['multiple']['#disabled'] = TRUE;
+      $form['field']['multiple']['#default_value'] = 1;
+    }
+  }
+  if (isset($form['#field_info']) && $form['#id'] == 'node-form') {
+    foreach ($form['#field_info'] as $field) {
+      if ($field['widget']['type'] == 'inline_node_ref') {
+        $form['#cache'] = TRUE;
+      }
+    }
+  }
+}
+
+function ajax_actions_forms_node_ref_widget(&$form, &$form_state, $field, $items, $delta = 0) {
+  $element = array(
+    '#type' => 'value',
+    '#value' => $items,
+    '#theme' => 'inline_node_ref',
+    '#form_build_id' => $form['#build_id'],
+  );
+  return $element;
+}
+
+function ajax_actions_forms_node_ref_theme($existing, $type, $theme, $path) {
+  $core_theme = $existing['content_multiple_values'];
+  return array(
+    'inline_node_ref' => array(
+      'arguments' => $core_theme['arguments'],
+      'type' => 'module',
+      'function' => 'theme_inline_node_ref',
+    ),
+  );
+}
+
+function theme_inline_node_ref($element) {
+  $field_name = $element['#field_name'];
+  $type_name = $element['#type_name'];
+  $field = content_fields($field_name, $type_name);
+  $field_name_css_safe = str_replace('_', '-', $field_name);
+  
+  $values = array();
+  foreach ($element['#value'] as $item) {
+    $values[] = $item['nid'];
+  }
+  
+  $id = ajax_actions_dom_id();
+  
+  $links = array();
+  
+  $settings = array('class' => array($field['widget']['content_link_class']));
+  $action = array(
+    'inline_node_ref' => array(
+      'form' => array(
+        'form_build_id' => $element['#form_build_id'],
+        'field' => $field['field_name'],
+        'op' => 'add',
+        'link_class' => $field['widget']['content_link_class'],
+        'id' => $id,
+        'display' => $field['widget']['input_method'],
+      ),
+    ),
+    'purpose' => array('inline_node_ref'),
+    'op' => 'form',
+    'form_type' => 'add_node',
+    'buttons' => array('save_and_refresh' => 'Save and Add Another'),
+    'display' => $field['widget']['input_method'],
+    'container' => '.add-and-ref-form.' . $field_name_css_safe,
+  );  
+  if (isset($field['referenceable_types'])) {
+    foreach ($field['referenceable_types'] as $type) {
+      if ($type) {
+        $type_info = content_types($type);
+        $action['node_type'] = $type;
+        $links[] = ajax_actions_l('Add ' . $type_info['name'], array($action), $settings);
+      }
+    }
+  }
+  
+  $view_markup = ajax_actions_forms_node_ref_build_view($field['widget']['ref_view'], array(implode('+', $values)), $action['inline_node_ref']['form']);
+  
+  $output .= '<div class="form-item inline-add-and-ref ' . $field_name_css_safe . '">';
+  $output .= '<label>' . $element['#title'] . ':</label>';
+  $output .= '<div class="add-and-ref-container add-and-ref-' . $id . ' ">';
+  $output .= '<div class="add-and-ref-view">' . $view_markup . '</div>';
+  $output .= '<div class="add-and-ref-form ' . $field_name_css_safe . '"></div>';
+  $output .= implode($links);
+  $output .= $element['#description'] ? '<div class="description">' . $element['#description'] . '</div>' : '';
+  $output .= '</div></div>';
+  
+  return $output;
+}
+
+function ajax_actions_forms_node_ref_build_view ($id, $args, $options) {
+  $view = views_get_view($id);
+  $display = $view->add_display('default', NULL, 'inline_node_ref');
+  $view->display[$display]->display_options = $view->display['default']->display_options;
+  $view->display[$display]->vid = $view->display['default']->vid;
+  $fields = $view->get_items('field', $display);
+  if (!isset($fields['nid'])) {
+    $view->add_item($display, 'field', 'node', 'nid', array('label' => NULL, 'inline_form_options' => $options), 'inline_node_ref_controls');
+  }
+  return $view->preview($display, $args);
+}
+
+function ajax_actions_forms_node_ref_ajax_actions_forms_open_commands($action, $options) {
+  if ($action['inline_node_ref']['form']['display'] == 'inline') {
+    return array(array('command' => 'add_class', 'class' => 'hide-links', 'selector' => '.add-and-ref-container.add-and-ref-' . $action['inline_node_ref']['form']['id']));
+  }
+}
+
+function ajax_actions_forms_node_ref_ajax_actions_forms_close_commands($action, $options) {
+  if ($action['inline_node_ref']['form']['display'] == 'inline') {
+    return array(array('command' => 'remove_class', 'class' => 'hide-links', 'selector' => '.add-and-ref-container.add-and-ref-' . $action['inline_node_ref']['form']['id']));
+  }
+}
+
+function ajax_actions_forms_node_ref_preprocess_views_view_field__inline_node_ref_controls (&$vars) {
+  $args = $vars['field']->options['inline_form_options'];
+  if ($args['nid']) {
+    unset($args['nid']);
+  }
+  $args['op'] = 'edit';
+  $field_name_css_safe = str_replace('_', '-', $args['field']);
+  $nid = $vars['output'];
+  $settings = array('class' => array($args['link_class']));
+  $action = array(
+    'purpose' => array('inline_node_ref'),
+    'container' => '.add-and-ref-form.' . $field_name_css_safe,
+    'form_type' => 'edit_node',
+    'op' => 'form',
+    'nid' => $nid,
+    'inline_node_ref' => array('form' => $args),
+    'display' => $args['display'],
+  );
+  $vars['output'] = ajax_actions_l('Edit', array($action), $settings);
+  $args['op'] = 'delete';
+  $args['nid'] = $nid;
+  $action = array(
+    'inline_node_ref' => array('form' => $args),
+  );
+  $vars['output'] .= ajax_actions_l('Delete', array($action), $settings);
+}
+
+function ajax_actions_forms_node_ref_add_node(&$form, $group, $field, $nid) {
+  if ($group) {
+    if (!$form[$group][$field]['#value']['0']['nid']) {
+      $form[$group][$field]['#value']['0']['nid'] = $nid;
+    }
+    else {
+      $form[$group][$field]['#value'][] = array('nid' => $nid);
+    }
+  }
+  else {
+    if (!$form[$field]['#value']['0']['nid']) {
+      $form[$field]['#value']['0']['nid'] = $nid;
+    }
+    else {
+      $form[$field]['#value'][] = array('nid' => $nid);
+    }
+  }
+}
+
+function ajax_actions_forms_node_ref_delete_node(&$form, $group, $field, $nid) {
+  if ($group) {
+    $location = array_search(array('nid' => $nid), $form[$group][$field]['#value']); 
+    unset($form[$group][$field]['#value'][$location]);
+  }
+  else {
+    $location = array_search(array('nid' => $nid), $form[$field]['#value']);
+    unset($form[$field]['#value'][$location]);
+  }
+  node_delete($nid);
+}
+
+function ajax_actions_forms_node_ref_ajax_actions_commands($action) {
+  if ($action['inline_node_ref']['form']['op'] == 'delete') {
+    return ajax_actions_forms_node_ref_ajax_actions_forms_commands($action);
+  }
+}
+
+function ajax_actions_forms_node_ref_ajax_actions_forms_commands($action) {
+  if ($action['inline_node_ref']['form']) {
+    $options = $action['inline_node_ref']['form'];
+    $form_state = array('submitted' => FALSE);
+    $form = form_get_cache($options['form_build_id'], $form_state);
+    $form['#programmed'] = FALSE;
+    $field = $options['field'];
+    $field_info = content_fields($field, $form['type']['#value']);
+    $group = module_exists('fieldgroup') ? _fieldgroup_field_get_group($form['type']['#value'], $field) : NULL;
+    
+    if ($options['op'] == 'add') {
+      ajax_actions_forms_node_ref_add_node($form, $group, $field, $action['nid']);
+    }
+    elseif ($options['op'] == 'delete') {
+      ajax_actions_forms_node_ref_delete_node($form, $group, $field, $options['nid']);
+    }
+    
+    form_set_cache($options['form_build_id'], $form, $form_state);
+    
+    $element = $group ? $form[$group][$field] : $form[$field];
+    
+    foreach ($element['#value'] as $item) {
+      $values[] = $item['nid'];
+    }
+    
+    $field_name_css_safe = str_replace('_','-',$field);
+    
+    $markup = ajax_actions_forms_node_ref_build_view($field_info['widget']['ref_view'], array(implode('+', $values)), $options);
+    
+    $output[] = ctools_ajax_command_html('.' . $field_name_css_safe . '.inline-add-and-ref .add-and-ref-view', $markup);
+    
+    return $output;
+  }
+  if ($action['inline_node_ref']['type'] == 'view') {
+    $nid = $action['inline_node_ref']['nid'];
+    $field = $action['inline_node_ref']['field'];
+    $field_info = content_fields($field);
+    $new_nid = $action['nid'];
+    $node = node_load($nid, NULL, TRUE);
+    foreach($field_info['columns'] as $key => $item) {
+      $node->{$field}[] = array($key => $new_nid);
+    }
+    node_save($node);
+  }
+}

@@ -1,0 +1,66 @@
+<?php
+
+/**
+ * @file
+ * Handles links for dialog forms.
+ */
+
+function ajax_actions_forms_dialog_build_title($action) {
+  if ($action['title']) {
+    return $action['title'];
+  }
+  switch ($action['form_type']) {
+    case 'add_node':
+      $title = 'Add: ' . node_get_types('name', $action['node_type']);
+      break;
+    case 'edit_node':
+      $title = 'Edit: ' . node_get_types('name', $action['node']->type);
+      break;
+    case 'delete_node':
+      $title = 'Delete: ' . node_get_types('name', $action['node']->type);
+      break;
+    case 'comment':
+      $title = 'Comment:  ' . node_get_types('name', $action['node']->type);
+      break;
+    case 'edit_comment':
+      $title = 'Edit Comment:  ' . node_get_types('name', $action['node']->type);
+      break;
+    case 'add_user':
+      $title = 'Add: New User';
+      break;
+    case 'delete_user':
+      $title = 'Delete: ' . $action['user']->name;
+      break;
+  }
+  if (function_exists('spaces_get_space') && $space = spaces_get_space()) {
+    $title .= ' in ' . $space->group->title;
+  }
+  return $title;
+}
+
+function ajax_actions_forms_dialog_ajax_actions_link_include($action) {
+  if ($action['op'] == 'form' && $action['display'] == 'dialog') {
+    dialog_add_js();
+    drupal_add_js(drupal_get_path('module', 'ajax_actions_forms_dialog') . '/ajax_actions_forms_dialog.js');
+  }
+}
+
+function ajax_actions_forms_dialog_embed_form($output, $action) {
+  $title = ajax_actions_forms_dialog_build_title($action);
+  $commands[] = array('command' => 'dialog_show');
+  $commands[] = dialog_command_display($title, $output);
+  foreach($commands as $key => $command) {
+    if ($command['command'] == 'dialog_display') {
+      $commands[$key]['options']['position'] = array('center',80);
+      $commands[$key]['options']['resizable'] = FALSE;
+      $commands[$key]['options']['height'] = 'auto';
+      $commands[$key]['options']['width'] = 'auto';
+      $commands[$key]['options']['closeOnEscape'] = FALSE;
+    }
+  }
+  return $commands;
+}
+
+function ajax_actions_forms_dialog_close() {
+  return dialog_command_dismiss();
+}

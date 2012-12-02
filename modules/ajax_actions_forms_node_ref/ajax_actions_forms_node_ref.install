@@ -1,0 +1,51 @@
+<?php
+// $Id: text.install,v 1.37.2.10 2008/10/22 12:53:40 yched Exp $
+
+/**
+ * @file
+ * Implementation of hook_install().
+ */
+function ajax_actions_forms_node_ref_install() {
+  drupal_load('module', 'content');
+  content_notify('install', 'ajax_actions_forms_node_ref');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function ajax_actions_forms_node_ref_uninstall() {
+  drupal_load('module', 'content');
+  content_notify('uninstall', 'ajax_actions_forms_node_ref');
+}
+
+/**
+ * Implementation of hook_enable().
+ *
+ * Notify content module when this module is enabled.
+ */
+function ajax_actions_forms_node_ref_enable() {
+  drupal_load('module', 'content');
+  content_notify('enable', 'ajax_actions_forms_node_ref');
+}
+
+/**
+ * Implementation of hook_disable().
+ *
+ * Notify content module when this module is disabled.
+ */
+function ajax_actions_forms_node_ref_disable() {
+  drupal_load('module', 'content');
+  content_notify('disable', 'ajax_actions_forms_node_ref');
+}
+
+/**
+ * uncomment update function if fields (hook_field_info) or widgets (hook_widget_info) are added or changed
+ */
+
+function ajax_actions_forms_node_ref_update_6000() {
+  drupal_load('module', 'content');
+  drupal_load('module', 'ajax_actions_forms_node_ref');
+  content_notify('install', 'ajax_actions_forms_node_ref');
+  content_notify('enable', 'ajax_actions_forms_node_ref');
+  return array();
+}

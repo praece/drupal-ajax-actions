@@ -1,0 +1,43 @@
+<?php
+
+function ajax_actions_edit_field_ajax_actions_commands($action) {
+  if ($action['op'] == 'edit_field') {
+    if ($action['nids']) {
+      foreach ($action['nids'] as $nid => $fields) {
+        if ($nid) {
+          $node = node_load($nid, NULL, TRUE);
+          
+          foreach ($fields as $field => $value) {
+            $field_info = content_fields($field);
+            foreach($field_info['columns'] as $key => $item) {
+              $node->{$field}[0][$key] = $value;
+            }
+          }
+          
+          // if the current space doesn't match the node's space reset the space for the node_save.
+          if (function_exists('spaces_get_space') && $node->og_groups){
+            $space = spaces_get_space();
+            $node_space_id = current($node->og_groups);
+            if ($space->id != $node_space_id) {
+              spaces_set_space(spaces_load('og',$node_space_id));
+              $old_space = $space;
+            }
+          }
+          
+          node_save($node);
+          
+          // Reset the space if we changed it.
+          if ($old_space){
+            spaces_set_space($old_space);
+            unset($old_space);
+          }
+          
+          drupal_set_message($node->title . ' has been updated.', 'status', FALSE);
+        }
+      }
+    }
+    else if ($action['bulk_edit']) {
+      drupal_set_message('No items selected.', 'warning', FALSE);
+    }
+  }
+}

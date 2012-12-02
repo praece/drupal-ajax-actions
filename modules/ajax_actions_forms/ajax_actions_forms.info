@@ -1,0 +1,5 @@
+name = Ajax Actions Forms
+description = Hooks that use ajax actions to generate forms.
+dependencies[] = ajax_actions
+package = Ajax Actions
+core = 6.x

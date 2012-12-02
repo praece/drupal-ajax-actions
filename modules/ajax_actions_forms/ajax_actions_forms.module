@@ -1,0 +1,391 @@
+<?php
+
+function ajax_actions_forms_ajax_actions_perms($action) {
+  if ($action['op'] == 'form') {
+    switch ($action['form_type']) {
+      case 'add_node':
+        return node_access('create', $action['node_type']);
+      case 'delete_node':
+        return node_access('delete', node_load($action['nid']));
+      case 'edit_node':
+        return node_access('update', node_load($action['nid']));
+      case 'comment':
+        return user_access('post comments');
+        break;
+      case 'edit_comment':
+        return comment_access('edit', _comment_load($action['cid']));
+        break;
+      case 'add_user': 
+      case 'delete_user':
+        return user_access('administer users');
+    }
+    return TRUE;
+  }
+}
+
+function ajax_actions_forms_ajax_actions_defaults_alter(&$options) {
+  foreach ($options['actions'] as &$action) {
+    if ($action['op'] == 'form') {
+      if (module_exists('ajax_actions_forms_dialog') && !$action['display']) {
+        $action['display'] = 'dialog';
+      }
+      
+      $action += array(
+        'display' => 'inline',
+        'buttons' => array(),
+        'prepopulate' => array(),
+        'purpose' => array(),
+        'prepend' => '',
+        'dom_id' => $options['settings']['dom_id'],
+      );
+      
+      $action['buttons'] += array(
+        'save_and_view' => 0,
+        'save_and_refresh' => 0,
+        'cancel' => 'Cancel',
+        'delete' => 0,
+      );
+      
+      if ($action['form_type'] == 'edit_node' || $action['form_type'] == 'delete_node' || $action['form_type'] == 'comment') {
+        $node = node_load($action['nid']);
+        if ($group_nid = current($node->og_groups)) {
+          $group = node_load($group_nid);
+          $action['prepend'] = $group->purl;
+        }
+      }
+      
+      if (function_exists('spaces_get_space') && !$action['prepend'] && $og_space = spaces_get_space()){
+        $action['prepend'] = $og_space->group->purl;
+      }
+      
+      if (!$options['settings']['prepend']) {
+        $options['settings']['prepend'] = $action['prepend'];
+      }
+    }
+  }
+}
+
+function ajax_actions_forms_ajax_actions_link_include($action) {
+  if ($action['op'] == 'form') {
+    drupal_add_js('misc/jquery.form.js');
+    drupal_add_js('misc/autocomplete.js');
+    drupal_add_js(drupal_get_path('module', 'ajax_actions_forms') . '/ajax_actions_forms.js');
+  }
+}
+
+function ajax_actions_forms_ajax_actions_commands($action, $options, $form_state = array()) {
+  if ($action['op'] == 'form') {
+    
+    $action['button_clicked'] = $_POST['op'] ? $_POST['op'] : NULL;
+    
+    if ($action['button_clicked'] == $action['buttons']['cancel']) {
+      return ajax_actions_forms_close($action);
+    }
+    
+    if ($action['button_clicked'] == $action['buttons']['delete'] && $action['form_type'] != 'delete_node') {
+      return ajax_actions_forms_delete($action, $options);
+    }
+    
+    ajax_actions_forms_build_object($action);
+    
+    ajax_actions_forms_form_id($action);
+    
+    ajax_actions_forms_includes($action);
+    
+    ajax_actions_forms_form_state($action, $form_state);
+    
+    $form = ctools_build_form($action['form_id'], $form_state);
+    
+    if (empty($form_state['executed'])) {
+      return ajax_actions_forms_embed_form($action, $form, $options);
+    }
+
+    return ajax_actions_forms_after_submit($action, $form, $options, $form_state);
+  }
+}
+
+function ajax_actions_forms_after_submit($action, $form, $options, $form_state, $commands = array()) {
+  
+  if ($form_state['nid']) {
+    $action['nid'] = $form_state['nid'];
+  }
+  if ($form_state['user']) {
+    $action['uid'] = $form_state['user']->uid;
+    $action['user'] = $form_state['user'];
+  }
+  
+  $hook_output = module_invoke_all('ajax_actions_forms_commands', $action, $options);
+  $commands = array_merge($commands, $hook_output);
+  
+  if ($action['button_clicked'] == $action['buttons']['save_and_view']) {
+    $commands[] = ctools_ajax_command_redirect('node/' . $form_state['nid']);
+  }
+  elseif ($action['button_clicked'] == $action['buttons']['save_and_refresh']) {
+    $delta = $action['delta'];
+    $action = $options['actions'][$delta];
+    $action['delta'] = $delta;
+    $action['refresh'] = 1;
+    $refresh_commands = ajax_actions_forms_ajax_actions_commands($action, $options, array('input' => array()));
+    $commands = array_merge($commands, $refresh_commands);
+  }
+  else {
+    $close_commands = ajax_actions_forms_close($action);
+    $commands = array_merge($commands, $close_commands);
+  }
+  
+  return $commands;
+}
+
+function ajax_actions_forms_embed_form($action, $form, $options) {
+  $output = '<div id="ajax-actions-forms-dom-id-' . $action['dom_id'] . '" class="embedded-forms-container ' . $action['display'] . '">' . $form . '</div>';
+  
+  if ($action['display'] == 'inline') {
+    $commands[] = ctools_ajax_command_remove('#ajax-actions-forms-dom-id-' . $action['dom_id']);
+    $commands[] = ctools_ajax_command_append($action['container'], $output);
+  }
+  elseif (module_exists('ajax_actions_forms_dialog') && $action['display'] == 'dialog') {
+    $commands = ajax_actions_forms_dialog_embed_form($output, $action);
+  }
+  
+  if (!$action['refresh']) {
+    foreach ($options['actions'] as $key => $item) {
+      if ($key == $action['delta']) {
+        break;
+      }
+      $options['actions'][$key]['ignore'] = 1;
+    }
+  }
+    
+  $commands[] = ctools_ajax_command_data('#ajax-actions-forms-dom-id-' . $action['dom_id'] . ' form', 'ajax_actions', $options);
+  
+  $hook_output = module_invoke_all('ajax_actions_forms_open_commands', $action, $options);
+  $commands = array_merge($commands, $hook_output);
+  
+  if (!$action['refresh']) {
+    $commands[] = 'break';
+  }
+  
+  return $commands;
+}
+
+function ajax_actions_forms_close($action) {
+  if ($action['display'] == 'inline') {
+    $commands[] = ctools_ajax_command_remove('#ajax-actions-forms-dom-id-' . $action['dom_id']);
+  }
+  elseif ($action['display'] == 'dialog') {
+    $commands[] = ajax_actions_forms_dialog_close($action);
+  }
+  
+  $hook_output = module_invoke_all('ajax_actions_forms_close_commands', $action, $options);
+  $commands = array_merge($commands, $hook_output);
+  
+  if ($action['button_clicked'] == $action['buttons']['cancel']) {
+    $commands[] = 'break';
+  }
+  return $commands;
+}
+
+function ajax_actions_forms_delete($action, $options) {
+  $action['form_type'] = 'delete_node';
+  $action['buttons'] = array(
+    'save_and_view' => 0,
+    'save_and_refresh' => 0,
+    'cancel' => 'Cancel',
+    'delete' => 0,
+  );
+  array_shift($options['actions']);
+  array_unshift($options['actions'], $action);
+  return ajax_actions_forms_ajax_actions_commands($action, $options);
+}
+
+function ajax_actions_forms_build_object(&$action) {
+  global $user;
+  if ($action['form_type'] == 'edit_node' || $action['form_type'] == 'delete_node') {
+    $action['node'] = node_load($action['nid']);
+    $action['node_type'] = $action['node']->type;
+    $action['purpose']['node_type'] = $action['node_type'];
+  }
+  elseif ($action['form_type'] == 'add_node') {
+    $action['node'] = array('uid' => $user->uid, 'name' => (isset($user->name) ? $user->name : ''), 'type' => $action['node_type'], 'language' => '');
+    $action['purpose']['node_type'] = $action['node_type'];
+  }
+  elseif ($action['form_type'] == 'delete_user') {
+    $action['user'] = user_load($action['uid']);
+  }
+  elseif ($action['form_type'] == 'comment') {
+    $action['node'] = node_load($action['nid']);
+    $action['node_type'] = $action['node']->type;
+    $action['comment'] = array('nid' => $action['nid']);
+  }
+  elseif ($action['form_type'] == 'edit_comment') {
+    $comment = _comment_load($action['cid']);
+    $action['node'] = node_load($comment->nid);
+    $action['node_type'] = $action['node']->type;
+    $action['comment'] = (array) $comment;
+  }
+  
+  $action['purpose']['op'] = $action['form_type'];
+}
+
+function ajax_actions_forms_form_id(&$action) {
+  switch ($action['form_type']) {
+    case 'add_node':
+    case 'edit_node':
+      $action['form_id'] = $action['node_type'] . '_node_form';
+      break;
+    case 'delete_node':
+      $action['form_id'] = 'node_delete_confirm';
+      break;
+    case 'comment':
+    case 'edit_comment':
+      $action['form_id'] = 'comment_form';
+      break;
+    case 'add_user':
+      $action['form_id'] = 'user_register';
+      break;
+    case 'delete_user':
+      $action['form_id'] = 'user_confirm_delete';
+      break;
+  }
+}
+
+function ajax_actions_forms_includes($action) {
+  ctools_include('ajax');
+  ctools_include('form');
+  ctools_include('node.pages', 'node', '');
+  module_load_include('pages.inc', 'user');
+}
+
+function ajax_actions_forms_form_state($action, &$form_state) {
+  $form_action = $action['prepend'] ? '/' . $action['prepend'] . '/ajax_actions' : '/ajax_actions';
+  
+  $form_state += array(
+    'action' => $form_action,
+    'ajax' => TRUE,
+    'no_redirect' => TRUE,
+    're_render' => FALSE,
+    'args' => array(
+      'buttons' => $action['buttons'], 
+      'ajax_display' => $action['display'],
+      'prepopulate' => $action['prepopulate'],
+      'form_purpose' => $action['purpose'],
+    ),
+  );
+  
+  switch ($action['form_type']) {
+    case 'add_node':
+    case 'edit_node':
+    case 'delete_node':
+      array_unshift($form_state['args'], $action['node']);
+      break;
+    case 'comment':
+    case 'edit_comment':
+      array_unshift($form_state['args'], $action['comment']);
+      break;
+    case 'delete_user':
+      array_unshift($form_state['args'], $action['user']);
+      break;
+  }
+}
+
+function ajax_actions_forms_form_alter(&$form, $form_state, $form_id) {
+  
+  if (isset($form_state['args']['ajax_display'])) {
+    
+    if (strpos($form_id, 'comment_form') !== FALSE || $form_id == 'user_register') {
+      $form['buttons']['submit'] = $form['submit'];
+      unset($form['submit']);
+      unset($form['preview']);
+    }
+
+    if ($form_id == 'node_delete_confirm') {
+      $form['buttons'] = $form['actions'];
+      $delete_node = node_load($form['nid']['#value']);
+      $type_info = content_types($delete_node->type);
+      $form['description']['#value'] = 'This will delete ' . $type_info['name'] . ': ' . $delete_node->title . ', this action cannot be undone.';
+      $form['description']['#prefix'] = '<div class="delete-description">';
+      $form['description']['#suffix'] = '</div>';
+      unset($form['actions'], $delete_node, $type_info);
+    }
+
+    if ($form_id == 'user_confirm_delete') {
+      $form['buttons'] = $form['actions'];
+      $delete_user_profile = content_profile_load('user_profile', $form['_account']['#value']->uid);
+      $form['description']['#value'] = 'This will delete the user account of ' . $delete_user_profile->title . ', this action cannot be undone.';
+      unset($form['actions'], $delete_user_profile);
+    }
+
+    if (strpos($form_id, '_node_form')) {
+      unset($form['buttons']['delete']);
+      unset($form['buttons']['preview']);
+    }
+    
+    if (isset($form_state['args']['prepopulate'])) {
+      foreach ($form_state['args']['prepopulate'] as $key => $item) {
+        if (isset($form[$key])) {
+          if (isset($form['#field_info'][$key])) {
+            $column = array_shift(array_keys($form['#field_info'][$key]['columns']));
+            if (isset($form[$key]['0'])) {
+              $form[$key]['0']['#default_value'][$column] = $item;
+            }
+            else {
+              $form[$key]['#default_value']['0'][$column] = $item;
+            }
+          }
+          else {
+            if ($form[$key]['#type'] == 'markup' || $form[$key]['#type'] == 'hidden') {
+              $form[$key]['#value'] = $item;
+            }
+            else {
+              $form[$key]['#default_value'] = $item;
+            }
+          }
+        }
+      }
+    }
+
+    if ($form['buttons']['submit']['#submit']) {
+      if ($og_sub_function = array_search('spaces_og_form_group_submit', $form['buttons']['submit']['#submit'])) {
+        unset($form['buttons']['submit']['#submit'][$og_sub_function]);
+      }
+    }
+    
+    $form['buttons']['submit']['#attributes']['class'] .= 'ctools-use-dialog-processed';
+    $form['#attributes']['class'] .= 'ctools-use-dialog-processed';
+    
+    $form['buttons']['submit']['#attributes']['class'] .= ' ajax-actions-link';
+    if ($form_state['args']['buttons']['save_and_view']) {
+      $form['buttons']['save_and_view'] = $form['buttons']['submit'];
+      $form['buttons']['save_and_view']['#weight'] += 5;
+      $form['buttons']['save_and_view']['#value'] = $form_state['args']['buttons']['save_and_view'];
+    }
+    if ($form_state['args']['buttons']['save_and_refresh']) {
+      $form['buttons']['save_and_refresh'] = $form['buttons']['submit'];
+      $form['buttons']['save_and_refresh']['#weight'] += 10;
+      $form['buttons']['save_and_refresh']['#value'] = $form_state['args']['buttons']['save_and_refresh'];
+    }
+    if ($form_state['args']['buttons']['cancel']) {
+      $form['buttons']['cancel'] = $form['buttons']['submit'];
+      $form['buttons']['cancel']['#weight'] += 15;
+      $form['buttons']['cancel']['#value'] = $form_state['args']['buttons']['cancel'];
+    }
+    if ($form_state['args']['buttons']['delete']) {
+      $form['buttons']['delete'] = $form['buttons']['submit'];
+      $form['buttons']['delete']['#weight'] += 20;
+      $form['buttons']['delete']['#value'] = $form_state['args']['buttons']['delete'];
+    }
+    if ($form_state['args']['ajax_display'] == 'dialog') {
+      $form['buttons']['#prefix'] = '<div class="dialog-buttons form-submit">';
+      $form['buttons']['#suffix'] = '</div>';
+    }
+    else {
+      $form['buttons']['#prefix'] = '<div class="form-submit">';
+      $form['buttons']['#suffix'] = '</div>';
+    }
+    $form['#action'] = $form_state['action'];
+
+    if ($form_id == 'user_register') {
+      $form['buttons']['#weight'] = 10;
+    }
+  }
+}

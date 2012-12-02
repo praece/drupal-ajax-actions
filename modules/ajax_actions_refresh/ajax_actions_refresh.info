@@ -1,0 +1,5 @@
+name = Ajax Actions Refresh
+description = Hooks that use ajax actions to refresh views and divs via ajax.
+dependencies[] = ajax_actions
+package = Ajax Actions
+core = 6.x

@@ -1,0 +1,5 @@
+name = Ajax Actions
+description = An API used to do things via ajax.
+dependencies[] = ctools
+package = Ajax Actions
+core = 6.x
