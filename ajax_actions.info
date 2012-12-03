@@ -1,5 +1,5 @@
+; $Id$
 name = Ajax Actions
 description = An API used to do things via ajax.
-dependencies[] = ctools
-package = Ajax Actions
-core = 6.x
+core = 7.x
+files[] = ajax_actions.module
