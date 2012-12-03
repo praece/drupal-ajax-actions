@@ -13,7 +13,6 @@ function ajax_actions_menu() {
   $items = array();
   $items['ajax/actions'] = array(
     'page callback' => 'ajax_actions',
-    'delivery callback' => 'ajax_actions_deliver',
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
     'file' => 'includes/ajax_actions.inc',
@@ -154,6 +153,10 @@ function ajax_actions_build_link($text, $options) {
         'ajax_actions' => $options,
       ),
       'path' => 'ajax/actions',
+      'prevent' => '',
+      'progress' => array(
+        'type' => 'none',
+      ),
     ),
   );
   

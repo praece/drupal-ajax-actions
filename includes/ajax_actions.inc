@@ -16,9 +16,8 @@
  */
 
 function ajax_actions($options = array(), $commands = array()) {
+  // Grab our array from the post data.
   $options = $_POST['ajax_actions'];
-  
-  dpm($options, 'after');
   
   /*
   
@@ -30,49 +29,50 @@ function ajax_actions($options = array(), $commands = array()) {
     parse_str($options, $options);
   }
   
-  $_GET['q'] = $options['settings']['path'];
-  
-  ajax_actions_includes($options);
+  */
   
   if (is_array($options['actions'])) {
+     
+    // Check if any modules implement our hook, we do this instead of module
+    // invoke all because we want to be able to pass all of our info by 
+    // reference.
+    $modules = module_implements('ajax_actions_commands');
+    
     foreach ($options['actions'] as $delta => &$action) {
      
       $action['delta'] = $delta;
       
+      // Let users tell us to ignore certain things if they would like.
       if (!$action['ignore']) {
-        $hook_output = module_invoke_all('ajax_actions_commands', $action, $options);
-        $commands = array_merge($commands, $hook_output);
+        $action['commands'] = array();
+        
+        foreach ($modules as $module) {
+          $func = $module . '_ajax_actions_commands';
+          $func($action, $options);
+        }
+        
+        if ($action['commands']) {
+          $commands = array_merge($commands, $action['commands']);
+        }
       }
       
-      if (end($commands) == 'break') {
-        array_pop($commands);
+      // Let a hook request to stop here if they want to.
+      if ($action['break'] == TRUE) {
+        $action['break'] == 'false';
         break;
       }
       
     }
   }
   
-  $ajax_link_data = ajax_actions_set_data();
-  
-  if ($ajax_link_data) {
-    $commands[] = array('command' => 'ajax_actions_bulk_data', 'items' => $ajax_link_data);
-  }
-  
+  // Let a user alter the commands array at the last minute.
   drupal_alter('ajax_actions_commands', $commands, $options);
   
-  ctools_ajax_render($commands);
-   * 
-   */
-}
-
-/**
- * Bring in any necessary include files.
- *
- * @param $options
- *   The post data from the ajax link.
- *
- */
-
-function ajax_actions_includes($options) {
-  ctools_include('ajax');
+  // If a command array has been created, return the data to the page as json.
+  if ($commands) {
+    print ajax_render($commands);
+  }
+  
+  // Perform end-of-request tasks.
+  ajax_footer();
 }

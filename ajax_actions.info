@@ -3,3 +3,5 @@ name = Ajax Actions
 description = An API used to do things via ajax.
 core = 7.x
 files[] = ajax_actions.module
+
+package = Ajax Actions
