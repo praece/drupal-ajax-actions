@@ -2,6 +2,8 @@
 
 function ajax_actions_test_ajax_actions_commands(&$action, &$options) {
   if ($action['op'] == 'test') {
-    $action['commands'][] = ajax_command_pp_popup('<span>' . $action['alert'] . '</span>');
+    module_load_include('inc', 'node', 'node.pages');
+    $form = node_add('company');
+    $action['commands'][] = ajax_command_pp_popup(render($form));
   }
 }

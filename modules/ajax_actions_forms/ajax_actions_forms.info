@@ -1,5 +1,7 @@
+; $Id$
 name = Ajax Actions Forms
-description = Hooks that use ajax actions to generate forms.
-dependencies[] = ajax_actions
+description = Hooks used to create forms in ajax actions.
+core = 7.x
+files[] = ajax_actions_forms.module
+
 package = Ajax Actions
-core = 6.x
