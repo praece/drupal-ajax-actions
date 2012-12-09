@@ -1,13 +1,23 @@
 <?php
 
-function ajax_actions_node_add_form($type) {
-  return array(
+function ajax_actions_node_add_form($type, $settings = array()) {
+  $defaults = array(
     'op' => 'node_add_form',
     'type' => $type,
+    'container' => 'body',
+    'args' => array(),
   );
+  
+  $action = array_merge($defaults, $settings);
+  
+  return $action;
 }
 
 function ajax_actions_forms_ajax_actions_commands(&$action, &$options) {
+  if ($action['op'] == 'process_form') {
+    
+  }
+  
   if ($action['op'] == 'node_add_form') {
     global $user;
     
@@ -21,7 +31,22 @@ function ajax_actions_forms_ajax_actions_commands(&$action, &$options) {
       'language' => LANGUAGE_NONE,
     );
     
+    $new_options = $options;
+    $new_options['actions'] = array_slice($options['actions'], $action['delta'] + 1);
+    
+    $new_action = array(
+      'op' => 'process_form',
+    );
+    
+    array_unshift($new_options['actions'], $new_action);
+    
     $form_state['build_info']['args']['node'] = $node;
+    $form_state['build_info']['args']['ajax'] = ajax_actions_build_ajax($new_options);
+    
+    if ($action['args']) {
+      $form_state['build_info']['args'] = array_merge($form_state['build_info']['args'], $action['args']);
+    }
+    
     $form_state['cache'] = true;
     $form_state['build_info']['files'][] = array('type' => 'inc', 'module' => 'node', 'name' => 'node.pages');
     
@@ -29,6 +54,17 @@ function ajax_actions_forms_ajax_actions_commands(&$action, &$options) {
     
     $form = drupal_build_form($form_id, $form_state);
     
-    $action['commands'][] = ajax_command_pp_popup(render($form));
+    if ($action['command']) {
+      $action['commands'][] = $action['command'](render($form));
+    }
+    else {
+      $action['commands'][] = ajax_command_append($action['container'], render($form));
+    }
+  }
+}
+
+function ajax_actions_forms_form_alter(&$form, &$form_state, $form_id) {
+  foreach (element_children($form['actions']) as $key) {
+    $form['actions'][$key]['#ajax'] = $form_state['build_info']['args']['ajax'];
   }
 }

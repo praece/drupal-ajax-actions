@@ -31,6 +31,9 @@ function ajax_actions($options = array(), $commands = array()) {
   
   */
   
+  dpm($_POST);
+  dpm($options);
+  
   if (is_array($options['actions'])) {
      
     // Check if any modules implement our hook, we do this instead of module

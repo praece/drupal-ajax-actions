@@ -148,17 +148,34 @@ function ajax_actions_build_link($text, $options) {
     '#attributes' => array(
       'class' => $options['settings']['class'],
     ),
-    '#ajax' => array(
-      'submit' => array(
-        'ajax_actions' => $options,
-      ),
-      'path' => 'ajax/actions',
-      'prevent' => '',
-      'progress' => array(
-        'type' => 'none',
-      ),
-    ),
+    '#ajax' => ajax_actions_build_ajax($options),
   );
   
+  $link['#attached']['js'][] = drupal_get_path('module', 'ajax_actions') . '/scripts/ajax_actions.js';
+  
   return render($link);
+}
+
+/**
+ * Build the ajax array for the link.
+ *
+ * @param $options
+ *   Options for the array.
+ *
+ * @return array
+ *   #ajax array for a link.
+ * 
+ */
+
+function ajax_actions_build_ajax($options) {
+  $ajax = array(
+    'path' => 'ajax/actions',
+    'prevent' => '',
+    'progress' => array(
+      'type' => 'none',
+    ),
+    'ajax_actions' => $options,
+  );
+  
+  return $ajax;
 }
