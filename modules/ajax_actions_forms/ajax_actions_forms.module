@@ -34,7 +34,7 @@ function ajax_actions_form_process(&$action, &$options) {
   if (!$form_state['executed']) {
     $selector = '.ajax-actions-form-' . $options['settings']['dom_id'];
     $action['commands'][] = ajax_command_replace($selector, render($form));
-    $action['break'];
+    $action['break'] = TRUE;
   }
 }
 

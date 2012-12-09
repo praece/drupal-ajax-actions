@@ -29,20 +29,17 @@ function ajax_actions($options = array(), $commands = array()) {
     foreach ($options['actions'] as $delta => &$action) {
      
       $action['delta'] = $delta;
+      $action['commands'] = $action['commands'] ? $action['commands'] : array();
       
       // Let users tell us to ignore certain things if they would like.
       if (!$action['ignore']) {
-        $action['commands'] = array();
-        
         foreach ($modules as $module) {
           $func = $module . '_ajax_actions_commands';
           $func($action, $options);
         }
-        
-        if ($action['commands']) {
-          $commands = array_merge($commands, $action['commands']);
-        }
       }
+        
+      $commands = array_merge($commands, $action['commands']);
       
       // Let a hook request to stop here if they want to.
       if ($action['break'] == TRUE) {
