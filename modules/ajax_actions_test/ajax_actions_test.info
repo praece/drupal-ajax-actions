@@ -1,8 +1,0 @@
-; $Id$
-name = Ajax Actions Test
-description = A test link to show how the hook works.
-core = 7.x
-files[] = ajax_actions_test.module
-dependencies[] = ajax_actions
-
-package = Ajax Actions

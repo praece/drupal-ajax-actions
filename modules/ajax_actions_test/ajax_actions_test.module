@@ -1,9 +1,0 @@
-<?php
-
-function ajax_actions_test_ajax_actions_commands(&$action, &$options) {
-  if ($action['op'] == 'test') {
-    module_load_include('inc', 'node', 'node.pages');
-    $form = node_add('company');
-    $action['commands'][] = ajax_command_pp_popup(render($form));
-  }
-}

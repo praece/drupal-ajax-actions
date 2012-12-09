@@ -19,21 +19,6 @@ function ajax_actions($options = array(), $commands = array()) {
   // Grab our array from the post data.
   $options = $_POST['ajax_actions'];
   
-  /*
-  
-  if (!is_array($options)) {
-    // Extra steps here are to make sure any special html special chars are removed
-    // this was causing issues when attempting to pass back emails.
-    $options = urldecode($options);
-    $options = html_entity_decode($options, ENT_QUOTES, 'UTF-8');
-    parse_str($options, $options);
-  }
-  
-  */
-  
-  dpm($_POST);
-  dpm($options);
-  
   if (is_array($options['actions'])) {
      
     // Check if any modules implement our hook, we do this instead of module
@@ -61,7 +46,6 @@ function ajax_actions($options = array(), $commands = array()) {
       
       // Let a hook request to stop here if they want to.
       if ($action['break'] == TRUE) {
-        $action['break'] == 'false';
         break;
       }
       
@@ -73,9 +57,12 @@ function ajax_actions($options = array(), $commands = array()) {
   
   // If a command array has been created, return the data to the page as json.
   if ($commands) {
-    print ajax_render($commands);
+    ajax_deliver(array(
+      '#commands' => $commands,
+      '#type' => 'ajax',
+    ));
   }
-  
-  // Perform end-of-request tasks.
-  ajax_footer();
+  else {
+    ajax_deliver(NULL);
+  }
 }

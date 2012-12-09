@@ -1,5 +1,43 @@
 <?php
 
+function ajax_actions_forms_ajax_actions_commands(&$action, &$options) {
+  if ($action['op'] == 'process_form') {
+    ajax_actions_form_process($action, $options);
+  }
+  
+  if ($action['op'] == 'node_add_form') {
+    ajax_actions_node_add_form_build($action, $options);
+  }
+}
+
+function ajax_actions_forms_form_alter(&$form, &$form_state, $form_id) {
+  if ($form['actions'] && $form_state['build_info']['args']['ajax']) {
+    $ajax = $form_state['build_info']['args']['ajax'];
+    
+    // Give ourselves a class to work with in case we need to replace this
+    // markup at some point, for example if there is an error when submitting
+    // the form.
+    $class = 'ajax-actions-form-' . $ajax['ajax_actions']['settings']['dom_id'];
+    $form['#attributes']['class'][] = $class;
+    
+    // Add the #ajax array to the submit handlers.
+    foreach (element_children($form['actions']) as $key) {
+      $form['actions'][$key]['#ajax'] = $ajax;
+    }
+  }
+}
+
+function ajax_actions_form_process(&$action, &$options) {
+  list($form, $form_state, $form_id, $form_build_id) = ajax_get_form();
+  drupal_process_form($form['#form_id'], $form, $form_state);
+  
+  if (!$form_state['executed']) {
+    $selector = '.ajax-actions-form-' . $options['settings']['dom_id'];
+    $action['commands'][] = ajax_command_replace($selector, render($form));
+    $action['break'];
+  }
+}
+
 function ajax_actions_node_add_form($type, $settings = array()) {
   $defaults = array(
     'op' => 'node_add_form',
@@ -13,58 +51,48 @@ function ajax_actions_node_add_form($type, $settings = array()) {
   return $action;
 }
 
-function ajax_actions_forms_ajax_actions_commands(&$action, &$options) {
-  if ($action['op'] == 'process_form') {
-    
+function ajax_actions_node_add_form_build(&$action, &$options) {
+  global $user;
+  
+  $type = $action['type'];
+  $form_id = $type . '_node_form';
+
+  $node = (object) array(
+    'uid' => $user->uid,
+    'name' => (isset($user->name) ? $user->name : ''),
+    'type' => $type,
+    'language' => LANGUAGE_NONE,
+  );
+  
+  $new_options = $options;
+  $new_options['actions'] = array_slice($options['actions'], $action['delta'] + 1);
+
+  $new_action = array(
+    'op' => 'process_form',
+  );
+
+  array_unshift($new_options['actions'], $new_action);
+  
+  $form_state['build_info']['args']['node'] = $node;
+  $form_state['build_info']['args']['ajax'] = ajax_actions_build_ajax($new_options);
+
+  if ($action['args']) {
+    $form_state['build_info']['args'] = array_merge($form_state['build_info']['args'], $action['args']);
+  }
+
+  $form_state['cache'] = true;
+  $form_state['build_info']['files'][] = array('type' => 'inc', 'module' => 'node', 'name' => 'node.pages');
+  
+  module_load_include('inc', 'node', 'node.pages');
+
+  $form = drupal_build_form($form_id, $form_state);
+  
+  if ($action['command']) {
+    $action['commands'][] = $action['command'](render($form));
+  }
+  else {
+    $action['commands'][] = ajax_command_append($action['container'], render($form));
   }
   
-  if ($action['op'] == 'node_add_form') {
-    global $user;
-    
-    $type = $action['type'];
-    $form_id = $type . '_node_form';
-
-    $node = (object) array(
-      'uid' => $user->uid,
-      'name' => (isset($user->name) ? $user->name : ''),
-      'type' => $type,
-      'language' => LANGUAGE_NONE,
-    );
-    
-    $new_options = $options;
-    $new_options['actions'] = array_slice($options['actions'], $action['delta'] + 1);
-    
-    $new_action = array(
-      'op' => 'process_form',
-    );
-    
-    array_unshift($new_options['actions'], $new_action);
-    
-    $form_state['build_info']['args']['node'] = $node;
-    $form_state['build_info']['args']['ajax'] = ajax_actions_build_ajax($new_options);
-    
-    if ($action['args']) {
-      $form_state['build_info']['args'] = array_merge($form_state['build_info']['args'], $action['args']);
-    }
-    
-    $form_state['cache'] = true;
-    $form_state['build_info']['files'][] = array('type' => 'inc', 'module' => 'node', 'name' => 'node.pages');
-    
-    module_load_include('inc', 'node', 'node.pages');
-    
-    $form = drupal_build_form($form_id, $form_state);
-    
-    if ($action['command']) {
-      $action['commands'][] = $action['command'](render($form));
-    }
-    else {
-      $action['commands'][] = ajax_command_append($action['container'], render($form));
-    }
-  }
-}
-
-function ajax_actions_forms_form_alter(&$form, &$form_state, $form_id) {
-  foreach (element_children($form['actions']) as $key) {
-    $form['actions'][$key]['#ajax'] = $form_state['build_info']['args']['ajax'];
-  }
+  $action['break'] = TRUE;
 }

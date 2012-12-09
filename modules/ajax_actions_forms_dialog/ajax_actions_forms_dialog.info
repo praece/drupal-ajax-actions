@@ -1,7 +1,0 @@
-name = Ajax Actions Forms Dialogs
-description = Adds functionality to Ajax Actions Forms to use jQuery UI Dialog modal windows.
-dependencies[] = ctools
-dependencies[] = dialog
-dependencies[] = ajax_actions_forms
-package = Ajax Actions
-core = 6.x
