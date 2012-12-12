@@ -23,8 +23,10 @@
       return false;
     }
     
-    ajax.beforeAjaxActions(ajax.ajax_actions);
-    ajax.serializeAjaxActions(ajax.ajax_actions, ajax.options);
+    if (ajax.ajax_actions) {
+      ajax.commandsAjaxActions(ajax.ajax_actions.settings.before);
+      ajax.serializeAjaxActions(ajax.ajax_actions, ajax.options);
+    }
 
     try {
       if (ajax.form) {
@@ -49,7 +51,14 @@
       // Unset the ajax.ajaxing flag here because it won't be unset during
       // the complete response.
       ajax.ajaxing = false;
-      alert("An error occurred while attempting to process " + ajax.options.url + ": " + e.message);
+      
+      if (ajax.ajax_actions) {
+        ajax.commandsAjaxActions(ajax.ajax_actions.settings.error);
+      }
+      
+      if (console.log) {
+        console.log("An error occurred while attempting to process " + ajax.options.url + ": " + e.message);
+      }
     }
 
     // For radio/checkbox, allow the default event. On IE, this means letting
@@ -64,14 +73,22 @@
   };
   
   /**
-  * Execute any pre submit actions.
+  * Execute js commands for ajaxActions.
   *
   * This is mostly just important for ux tweaks, for instance when you delete
   * something using ajax you can add some call to a command here that removes
   * the item from the page before the call ever occurs, so the user sees instant
   * feedback.
   */
-  Drupal.ajax.prototype.beforeAjaxActions = function (actions) {
+  Drupal.ajax.prototype.commandsAjaxActions = function (commands) {
+    
+    var ajax = this;
+    
+    $.each(commands, function(key, value){
+      if (value.command && ajax.commands[value.command]) {
+        ajax.commands[value.command](value);
+      }
+    })
     
   }
   

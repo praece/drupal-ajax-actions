@@ -98,6 +98,8 @@ function ajax_actions_defaults(&$options) {
   $options['settings'] += array(
       'dom_id' => ajax_actions_dom_id(),
       'class' => array(),
+      'before' => array(),
+      'error' => array(),
   );
   
   $options['settings']['class'][] = 'ajax-actions-dom-id-' . $options['settings']['dom_id'];
