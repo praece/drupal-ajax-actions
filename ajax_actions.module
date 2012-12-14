@@ -100,6 +100,7 @@ function ajax_actions_defaults(&$options) {
       'class' => array(),
       'before' => array(),
       'error' => array(),
+      'render' => TRUE,
   );
   
   $options['settings']['class'][] = 'ajax-actions-dom-id-' . $options['settings']['dom_id'];
@@ -154,6 +155,10 @@ function ajax_actions_build_link($text, $options) {
   );
   
   $link['#attached']['js'][] = drupal_get_path('module', 'ajax_actions') . '/scripts/ajax_actions.js';
+  
+  if (!$options['settings']['render']) {
+    return $link;
+  }
   
   return render($link);
 }
