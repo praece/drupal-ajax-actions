@@ -24,7 +24,7 @@
     }
     
     if (ajax.ajax_actions) {
-      ajax.commandsAjaxActions(ajax.ajax_actions.settings.before);
+      ajax.commandsAjaxActions(ajax.ajax_actions.settings.before, ajax);
       ajax.serializeAjaxActions(ajax.ajax_actions, ajax.options);
     }
 
@@ -53,7 +53,7 @@
       ajax.ajaxing = false;
       
       if (ajax.ajax_actions) {
-        ajax.commandsAjaxActions(ajax.ajax_actions.settings.error);
+        ajax.commandsAjaxActions(ajax.ajax_actions.settings.error, ajax);
       }
       
       if (console.log) {
@@ -80,13 +80,13 @@
   * the item from the page before the call ever occurs, so the user sees instant
   * feedback.
   */
-  Drupal.ajax.prototype.commandsAjaxActions = function (commands) {
+  Drupal.ajax.prototype.commandsAjaxActions = function (commands, ajax) {
     
-    var ajax = this;
+    var obj = this;
     
     $.each(commands, function(key, value){
-      if (value.command && ajax.commands[value.command]) {
-        ajax.commands[value.command](value);
+      if (value.command && obj.commands[value.command]) {
+        obj.commands[value.command](value, ajax);
       }
     })
     
