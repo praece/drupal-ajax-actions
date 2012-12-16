@@ -1,5 +1,0 @@
-name = Ajax Actions Forms Node Ref
-description = Uses ajax actions forms to create a form based and view based inline ajax node add and ref.
-dependencies[] = ajax_actions_forms
-package = Ajax Actions
-core = 6.x

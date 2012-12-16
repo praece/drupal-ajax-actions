@@ -3,5 +3,6 @@ name = Ajax Actions Forms
 description = Hooks used to create forms in ajax actions.
 core = 7.x
 files[] = ajax_actions_forms.module
+dependencies[] = ajax_actions
 
 package = Ajax Actions

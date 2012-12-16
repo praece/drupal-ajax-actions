@@ -1,43 +1,38 @@
 <?php
 
+function ajax_actions_edit_field($field, $ids, $value = NULL, $settings = array()) {
+  $defaults = array(
+    'op' => 'edit_field',
+    'field' => $field,
+    'ids' => is_array($ids) ? $ids : array($ids),
+    'value' => $value,
+    'type' => 'node',
+  );
+  
+  $action = array_merge($defaults, $settings);
+  
+  return $action;
+}
+
 function ajax_actions_edit_field_ajax_actions_commands($action) {
   if ($action['op'] == 'edit_field') {
-    if ($action['nids']) {
-      foreach ($action['nids'] as $nid => $fields) {
-        if ($nid) {
-          $node = node_load($nid, NULL, TRUE);
+    if ($action['ids']) {
+      $field_info = field_info_field($action['field']);
+      
+      if ($field_info['cardinality'] == 1) {
+        $entities = entity_load($action['type'], $action['ids']);
+        
+        foreach ($action['ids'] as $id) {
+          $entity = entity_metadata_wrapper($action['type'], $entities[$id]);
           
-          foreach ($fields as $field => $value) {
-            $field_info = content_fields($field);
-            foreach($field_info['columns'] as $key => $item) {
-              $node->{$field}[0][$key] = $value;
-            }
-          }
-          
-          // if the current space doesn't match the node's space reset the space for the node_save.
-          if (function_exists('spaces_get_space') && $node->og_groups){
-            $space = spaces_get_space();
-            $node_space_id = current($node->og_groups);
-            if ($space->id != $node_space_id) {
-              spaces_set_space(spaces_load('og',$node_space_id));
-              $old_space = $space;
-            }
-          }
-          
-          node_save($node);
-          
-          // Reset the space if we changed it.
-          if ($old_space){
-            spaces_set_space($old_space);
-            unset($old_space);
-          }
-          
-          drupal_set_message($node->title . ' has been updated.', 'status', FALSE);
+          $entity->{$action['field']}->set($action['value']);
+          $entity->save();
+          drupal_set_message($entity->title->value() . ' has been updated.', 'status');
         }
       }
-    }
-    else if ($action['bulk_edit']) {
-      drupal_set_message('No items selected.', 'warning', FALSE);
+      else {
+        drupal_set_message('You cannot set a multi value field\'s values using ajax actions edit field.', 'error');
+      }
     }
   }
 }
