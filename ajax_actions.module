@@ -45,9 +45,6 @@ function ajax_actions_l($text, $actions = array(), $settings = array()) {
   // Set any default values for actions.
   ajax_actions_defaults($options);
   
-  // Include the ajax actions js and css.
-  ajax_actions_link_includes($options);
-  
   return ajax_actions_build_link($text, $options);
 }
 
@@ -96,14 +93,21 @@ function ajax_actions_permissions($options) {
 
 function ajax_actions_defaults(&$options) {
   $options['settings'] += array(
-      'dom_id' => ajax_actions_dom_id(),
-      'class' => array(),
-      'before' => array(),
-      'error' => array(),
-      'render' => TRUE,
+    'dom_id' => ajax_actions_dom_id(),
+    'before' => array(),
+    'error' => array(),
+    'render' => TRUE,
   );
   
-  $options['settings']['class'][] = 'ajax-actions-dom-id-' . $options['settings']['dom_id'];
+  // We name our actions here so that our users can name their actions. If we
+  // don't do this we end up with an array if there are no user named actions.
+  foreach ($options['actions'] as $key => $action) {
+    $key = is_numeric($key) ? 'action_' . $key : $key;
+    $actions[$key] = $action;
+  }
+  $options['actions'] = $actions;
+  
+  $options['settings']['attributes']['class'][] = 'ajax-actions-dom-id-' . $options['settings']['dom_id'];
   
   drupal_alter('ajax_actions_defaults', $options);
 }
@@ -124,33 +128,13 @@ function ajax_actions_dom_id() {
  * 
  */
 
-function ajax_actions_link_includes($options) {
-  //drupal_add_js(drupal_get_path('module', 'ajax_actions') . '/ajax_actions.js');
-  foreach ($options['actions'] as $action) {
-    module_invoke_all('ajax_actions_link_include', $action);
-  }
-}
-
-/**
- * Build the ajax link.
- *
- * @param $options
- *   Options for the link.
- *
- * @return string
- *   Markup of the ajax link.
- * 
- */
-
 function ajax_actions_build_link($text, $options) {
   $link = array(
     '#type' => 'link',
     '#title' => $text,
     '#href' => '',
     '#options' => array('html' => TRUE),
-    '#attributes' => array(
-      'class' => $options['settings']['class'],
-    ),
+    '#attributes' => $options['settings']['attributes'],
     '#ajax' => ajax_actions_build_ajax($options),
   );
   
