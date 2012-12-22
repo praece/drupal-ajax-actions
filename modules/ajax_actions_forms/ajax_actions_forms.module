@@ -2,17 +2,31 @@
 
 function ajax_actions_forms_ajax_actions_commands(&$action, &$options) {
   if ($action['op'] == 'process_form') {
-    ajax_actions_form_process($action, $options);
+    $form = ajax_actions_form_process($action, $options);
   }
   
   if ($action['op'] == 'node_add_form') {
-    ajax_actions_node_add_form_build($action, $options);
+    $form = ajax_actions_node_form_build($action, $options);
+  }
+  
+  if ($action['op'] == 'node_edit_form') {
+    $form = ajax_actions_node_form_build($action, $options);
+  }
+  
+  if ($form) {
+    if ($action['command']) {
+    $action['commands'][] = $action['command'](render($form));
+    }
+    else {
+      $action['commands'][] = ajax_command_append($action['container'], render($form));
+    }
+    $action['break'] = TRUE;
   }
 }
 
 function ajax_actions_forms_form_alter(&$form, &$form_state, $form_id) {
-  if ($form['actions'] && $form_state['build_info']['args']['ajax']) {
-    $ajax = $form_state['build_info']['args']['ajax'];
+  if ($form['actions'] && $form_state['build_info']['ajax']) {
+    $ajax = $form_state['build_info']['ajax'];
     
     // Give ourselves a class to work with in case we need to replace this
     // markup at some point, for example if there is an error when submitting
@@ -43,7 +57,6 @@ function ajax_actions_node_add_form($type, $settings = array()) {
     'op' => 'node_add_form',
     'type' => $type,
     'container' => 'body',
-    'args' => array(),
   );
   
   $action = array_merge($defaults, $settings);
@@ -51,18 +64,35 @@ function ajax_actions_node_add_form($type, $settings = array()) {
   return $action;
 }
 
-function ajax_actions_node_add_form_build(&$action, &$options) {
+function ajax_actions_node_edit_form($nid, $settings = array()) {
+  $defaults = array(
+    'op' => 'node_edit_form',
+    'nid' => $nid,
+    'container' => 'body',
+  );
+  
+  $action = array_merge($defaults, $settings);
+  
+  return $action;
+}
+
+function ajax_actions_node_form_build(&$action, &$options) {
   global $user;
   
-  $type = $action['type'];
+  if ($action['nid']) {
+    $node = node_load($action['nid']);
+  }
+  else {
+    $node = (object) array(
+      'uid' => $user->uid,
+      'name' => (isset($user->name) ? $user->name : ''),
+      'type' => $action['type'],
+      'language' => LANGUAGE_NONE,
+    );
+  }
+  
+  $type = $node->type;
   $form_id = $type . '_node_form';
-
-  $node = (object) array(
-    'uid' => $user->uid,
-    'name' => (isset($user->name) ? $user->name : ''),
-    'type' => $type,
-    'language' => LANGUAGE_NONE,
-  );
   
   $new_options = $options;
   $new_options['actions'] = array_slice($options['actions'], $action['delta'] + 1);
@@ -74,10 +104,10 @@ function ajax_actions_node_add_form_build(&$action, &$options) {
   array_unshift($new_options['actions'], $new_action);
   
   $form_state['build_info']['args']['node'] = $node;
-  $form_state['build_info']['args']['ajax'] = ajax_actions_build_ajax($new_options);
+  $form_state['build_info']['ajax'] = ajax_actions_build_ajax($new_options);
 
-  if ($action['args']) {
-    $form_state['build_info']['args'] = array_merge($form_state['build_info']['args'], $action['args']);
+  if ($action['build_info']) {
+    $form_state['build_info'] = array_merge($form_state['build_info'], $action['build_info']);
   }
 
   $form_state['cache'] = true;
@@ -85,14 +115,5 @@ function ajax_actions_node_add_form_build(&$action, &$options) {
   
   module_load_include('inc', 'node', 'node.pages');
 
-  $form = drupal_build_form($form_id, $form_state);
-  
-  if ($action['command']) {
-    $action['commands'][] = $action['command'](render($form));
-  }
-  else {
-    $action['commands'][] = ajax_command_append($action['container'], render($form));
-  }
-  
-  $action['break'] = TRUE;
+  return drupal_build_form($form_id, $form_state);
 }
