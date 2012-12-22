@@ -21,8 +21,7 @@ function ajax_actions($options = array(), $commands = array()) {
     $modules = module_implements('ajax_actions_commands');
     
     foreach ($options['actions'] as $delta => &$action) {
-      // Attach a delta so you can find the action in the list of actions.
-      $action['delta'] = $delta;
+      // Attach a commends array so they can be added by the user.
       $action['commands'] = $action['commands'] ? $action['commands'] : array();
       
       // Let users tell us to ignore certain things if they would like. If it 

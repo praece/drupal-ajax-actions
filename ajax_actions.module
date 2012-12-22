@@ -104,6 +104,7 @@ function ajax_actions_defaults(&$options) {
   foreach ($options['actions'] as $key => $action) {
     $key = is_numeric($key) ? 'action_' . $key : $key;
     $actions[$key] = $action;
+    $actions[$key]['delta'] = $key;
   }
   $options['actions'] = $actions;
   

@@ -52,7 +52,7 @@ function ajax_actions_form_process(&$action, &$options) {
   }
 }
 
-function ajax_actions_node_add_form($type, $settings = array()) {
+function ajax_actions_node_add_action($type, $settings = array()) {
   $defaults = array(
     'op' => 'node_add_form',
     'type' => $type,
@@ -64,7 +64,24 @@ function ajax_actions_node_add_form($type, $settings = array()) {
   return $action;
 }
 
-function ajax_actions_node_edit_form($nid, $settings = array()) {
+function ajax_actions_node_add_form($type, $actions = array(), $settings = array(), $action = array()) {
+  $defaults = array('type' => $type);
+  
+  $action = array_merge($action, $defaults);
+  
+  array_unshift($actions, $action);
+  
+  $options['actions'] = $actions;
+  $options['settings'] = $settings;
+  
+  ajax_actions_defaults($options);
+  
+  $action = current($options['actions']);
+  
+  return ajax_actions_node_form_build($action, $options);
+}
+
+function ajax_actions_node_edit_action($nid, $settings = array()) {
   $defaults = array(
     'op' => 'node_edit_form',
     'nid' => $nid,
@@ -74,6 +91,23 @@ function ajax_actions_node_edit_form($nid, $settings = array()) {
   $action = array_merge($defaults, $settings);
   
   return $action;
+}
+
+function ajax_actions_node_edit_form($nid, $actions = array(), $settings = array(), $action = array()) {
+  $defaults = array('nid' => $nid);
+  
+  $action = array_merge($action, $defaults);
+  
+  array_unshift($actions, $action);
+  
+  $options['actions'] = $actions;
+  $options['settings'] = $settings;
+  
+  ajax_actions_defaults($options);
+  
+  $action = current($options['actions']);
+  
+  return ajax_actions_node_form_build($action, $options);
 }
 
 function ajax_actions_node_form_build(&$action, &$options) {
