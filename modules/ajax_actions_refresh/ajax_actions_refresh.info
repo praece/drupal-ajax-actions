@@ -1,5 +1,8 @@
+; $Id$
 name = Ajax Actions Refresh
-description = Hooks that use ajax actions to refresh views and divs via ajax.
+description = Hooks used to refresh the page in ajax actions.
+core = 7.x
+files[] = ajax_actions_refresh.module
 dependencies[] = ajax_actions
+
 package = Ajax Actions
-core = 6.x

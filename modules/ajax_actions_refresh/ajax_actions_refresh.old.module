@@ -1,0 +1,170 @@
+<?php
+
+// Get views ready to be refreshed.
+function ajax_actions_refresh_preprocess_views_view(&$vars) {
+
+  // Give the view an ajax_actions link so it can be refreshed directly.
+  $refresh_action = array('op' => 'refresh', 'selector' => '.view-dom-id-' . $vars['view']->dom_id);
+  $settings = array('selector' => '.view-dom-id-' . $vars['view']->dom_id);
+  ajax_actions_l('view_refresh', array($refresh_action), $settings);
+  
+  // Store all of the view information in jquery.data so we can easily get to it when we want to refresh it.
+  $options = array('type' => 'view', 'name' => $vars['view']->name, 'display' => $vars['view']->current_display, 'args' => $vars['view']->args, 'dom_id' => $vars['view']->dom_id);
+  ajax_actions_set_data($options, '.view-dom-id-' . $vars['view']->dom_id, 'ajax_actions_refresh', 'ajax-actions-refresh');
+
+}
+
+// Get nodes ready to be refreshed.
+function ajax_actions_refresh_preprocess_node(&$vars) {
+  
+  // Give the node an ajax_actions link so it can be refreshed directly.
+  $refresh_action = array('op' => 'refresh', 'selector' => '#node-' . $vars['type'] . '-' . $vars['nid']);
+  $settings = array('selector' => '#node-' . $vars['type'] . '-' . $vars['nid']);
+  ajax_actions_l('node_refresh', array($refresh_action), $settings);
+  
+  // Store all of the node information in jquery.data so we can easily get to it when we want to refresh it.
+  $options = array('type' => 'node', 'nid' => $vars['nid']);
+  ajax_actions_set_data($options, '#node-' . $vars['type'] . '-' . $vars['nid'], 'ajax_actions_refresh', 'ajax-actions-refresh');
+  
+}
+
+// Get blocks ready to be refreshed.
+function ajax_actions_refresh_preprocess_block(&$vars) {
+  
+  // Give the block an ajax_actions link so it can be refreshed directly.
+  $refresh_action = array('op' => 'refresh', 'selector' => '#block-' . $vars['block']->bid);
+  $settings = array('selector' => '#block-' . $vars['block']->bid);
+  ajax_actions_l('block_refresh', array($refresh_action), $settings);
+
+  // Store all of the block information in jquery.data so we can easily get to it when we want to refresh it.
+  $options = array('type' => 'block', 'module' => $vars['block']->module, 'delta' => $vars['block']->delta, 'bid' => $vars['block']->bid);
+  ajax_actions_set_data($options, '#block-' . $vars['block']->bid, 'ajax_actions_refresh', 'ajax-actions-refresh');
+
+}
+
+function ajax_actions_refresh_ajax_actions_defaults_alter(&$options) {
+  foreach ($options['actions'] as $action) {
+    if (!$flag) {
+      $options['settings']['class'][] = 'ajax-actions-refresh-link';
+      $flag = TRUE;
+    }
+  }
+}
+
+function ajax_actions_refresh_ajax_actions_link_include($action) {
+  if ($action['op'] == 'refresh') {
+    drupal_add_js(drupal_get_path('module', 'ajax_actions_refresh') . '/ajax_actions_refresh.js');
+  }
+}
+
+function ajax_actions_refresh_ajax_actions_commands($action) {
+  
+  if ($action['op'] == 'refresh' && $action['items'] && !empty($action['items'])) {
+    foreach ($action['items'] as $item) {
+      
+      // Refresh views.
+      if ($item['type'] == 'view') {
+        ajax_actions_refresh_store_dom_id($item['dom_id']);
+        $view_dom_id = $item['dom_id'];
+        $view_name = $item['name'];
+        $view = views_get_view($view_name);
+        if (isset($item['items'])) {
+          $view->set_items_per_page($item['items']);
+        }
+        $view->dom_id = $view_dom_id;
+        $display_id = $item['display'];
+        $view_args = $item['args'] ? $item['args'] : array();
+        if ($view || $view->access($display_id)) {
+          $view_markup = $view->preview($display_id, $view_args);
+          if (isset($view->exposed_raw_input)) {
+            $selector = '#views-exposed-form-' . str_replace('_', '-', $view_name) . '-' . str_replace('_', '-', $display_id);
+            $commands[] = array('command' => 'ajax_submit', 'selector' => $selector);
+          }
+          else {
+            // Get the inside of the view to preserve any client side changes that
+            // have been made to the containing div.
+            $view_sub_start = strpos($view_markup, '>') + 1;
+            $view_sub_end = strrpos($view_markup, '<');
+            $view_sub_length = $view_sub_end - $view_sub_start;
+            $view_markup = substr($view_markup, $view_sub_start, $view_sub_length);
+            $commands[] = ctools_ajax_command_html('.view-dom-id-' . $view_dom_id, $view_markup);
+          }
+        }
+      }
+      
+      // Refresh nodes.
+      else if ($item['type'] == 'node') {
+        $node = node_load($item['nid'], NULL, TRUE);
+        $markup = node_view($node);
+        
+        $start = strpos($markup, '>') + 1;
+        $end = strrpos($markup, '<');
+        $length = $end - $start;
+        $markup = substr($markup, $start, $length);
+        
+        $container = '#node-' . $node->type . '-' . $node->nid;
+        $commands[] = ctools_ajax_command_html($container, $markup);
+      }
+      
+      // Refresh blocks.
+      else if ($item['type'] == 'block') {
+        $block = (object) module_invoke($item['module'], 'block', 'view', $item['delta']);
+        $block->module = $item['module'];
+        $block->delta = $item['delta'];
+        $block->bid = $item['bid'];
+        $markup = theme('block', $block);
+        
+        $start = strpos($markup, '>') + 1;
+        $end = strrpos($markup, '<');
+        $length = $end - $start;
+        $markup = substr($markup, $start, $length);
+        
+        $container = '#block-' . $item['bid'];
+        $commands[] = ctools_ajax_command_html($container, $markup);
+      }
+      
+    }
+    
+    return $commands;
+    
+  }
+  
+  if ($action['op'] == 'refresh_page') {
+    $commands[] = ctools_ajax_command_reload();
+    return $commands;
+  }
+  
+  if ($action['op'] == 'redirect') {
+    $commands[] = ctools_ajax_command_redirect($action['path']);
+    return $commands;
+  }
+  
+}
+
+// Helper function to store dom id's when refreshing views
+function ajax_actions_refresh_store_dom_id($dom_id = NULL) {
+  static $id;
+  $return = $id;
+  $id = $dom_id;
+  return $return;
+}
+
+// Helper function to set dom id's when refreshing views
+function ajax_actions_refresh_views_pre_render(&$view) {
+
+  // Use the same dom id as the view that is currently on the page.
+  // I think this is breaking ajax views and needs to be addressed at some point.
+  $dom_id = ajax_actions_refresh_store_dom_id();
+  $view->dom_id = !empty($dom_id) ? $dom_id : md5($view->name . time() . rand());
+
+}
+
+// Remove refreshes that occur after a redirect or page reload
+function ajax_actions_refresh_ajax_actions_commands_alter(&$commands, $options) {
+  foreach ($commands as $key => $command) {
+    if ($command['command'] == 'redirect' || $command['command'] == 'reload') {
+      $commands = array_slice($commands, 0, $key + 1);
+      break;
+    }
+  }
+}
