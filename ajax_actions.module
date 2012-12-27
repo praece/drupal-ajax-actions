@@ -34,16 +34,18 @@ function ajax_actions_menu() {
  */
 
 function ajax_actions_l($text, $actions = array(), $settings = array()) {
-  $options['actions'] = $actions;
-  $options['settings'] = $settings;
+  $options = array(
+    'actions' => $actions,
+    'settings' => $settings,
+  );
+  
+  // Set any default values for actions.
+  ajax_actions_defaults($options);
   
   // Check permissions before building the link.  
   if (!ajax_actions_permissions($options)) {
     return;
   }
-  
-  // Set any default values for actions.
-  ajax_actions_defaults($options);
   
   return ajax_actions_build_link($text, $options);
 }
@@ -108,7 +110,11 @@ function ajax_actions_defaults(&$options) {
   }
   $options['actions'] = $actions;
   
-  $options['settings']['attributes']['class'][] = 'ajax-actions-dom-id-' . $options['settings']['dom_id'];
+  $options['settings']['attributes']['class'][] = 'ajax-actions-link';
+  
+  if (!$options['settings']['attributes']['id']) {
+    $options['settings']['attributes']['id'] = 'ajax-actions-link-' . $options['settings']['dom_id'];
+  }
   
   drupal_alter('ajax_actions_defaults', $options);
 }
