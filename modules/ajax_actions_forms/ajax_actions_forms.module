@@ -34,6 +34,9 @@ function ajax_actions_forms_form_alter(&$form, &$form_state, $form_id) {
     $class = 'ajax-actions-form-' . $ajax['ajax_actions']['settings']['dom_id'];
     $form['#attributes']['class'][] = $class;
     
+    // Attach our js.
+    $form['#attached']['js'][] = drupal_get_path('module', 'ajax_actions_forms') . '/scripts/ajax_actions_forms.js';
+    
     // Add the #ajax array to the submit handlers.
     foreach (element_children($form['actions']) as $key) {
       $form['actions'][$key]['#ajax'] = $ajax;
