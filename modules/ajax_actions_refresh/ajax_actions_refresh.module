@@ -64,10 +64,11 @@ function ajax_actions_refresh_ajax_actions_commands(&$action, &$options) {
       
       // Load the inc for views ajax.
       module_load_include('inc', 'views', 'includes/ajax');
-
-      // Use views ajax to grab the commands we need.
+      
+      // Use views ajax to grab the commands we need. We don't want the scroll
+      // command so we just take command 1.
       $return = views_ajax();
-      $action['commands'] = $return['#commands'];
+      $action['commands'][] = $return['#commands']['1'];
       
       //Reset post and request.
       $_POST = $post;
