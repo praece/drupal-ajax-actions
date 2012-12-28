@@ -11,6 +11,17 @@ function ajax_actions_refresh_view($dom_id, $settings = array()) {
   return $action;
 }
 
+function ajax_actions_refresh_node($nid, $settings = array()) {
+  $defaults = array(
+    'op' => 'refresh_node',
+    'nid' => $nid,
+  );
+  
+  $action = array_merge($defaults, $settings);
+  
+  return $action;
+}
+
 /**
  * Implementation of hook_ajax_actions_defaults_alter(&$options).
  */
@@ -64,10 +75,11 @@ function ajax_actions_refresh_ajax_actions_commands(&$action, &$options) {
       break;
     case 'refresh_node':
       // Build, load and replace the node on the page.
-      $node = node_load($item['nid'], NULL, TRUE);
-      $markup = node_view($node);
-      $selector = '#node-' . $node->type . '-' . $node->nid;
-      $action['commands'][] = ajax_command_replace($selector, $markup);
+      $node = node_load($action['nid'], NULL, TRUE);
+      $view = node_view($node);
+      drupal_set_title($node->title);
+      $selector = '.node.node-' . $node->nid;
+      $action['commands'][] = ajax_command_replace($selector, render($view));
       break;
     case 'refresh_block':
       // Grab the block object by using module invoke, then use ajax commands to
