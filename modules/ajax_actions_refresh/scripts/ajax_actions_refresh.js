@@ -10,12 +10,19 @@
   Drupal.ajax.prototype.commands.ajax_actions_refresh_view = function(command, ajax) {
     $.each(ajax.ajax_actions.actions, function(key, action){
       if (action.op == 'refresh_view') {
-        var view = Drupal.views.instances['views_dom_id:' + action.dom_id];
-        action.view_settings = view.settings;
+        // Step through the views available on the page and see if they match
+        // the selector that we passed in.
+        $.each(Drupal.views.instances, function(index, view) {
+          if (view.$view.is(action.selector)) {
+            // If they do grab all of the settings and add them to ajax actions.
+            action.view_settings = view.settings;
+            if (view.$exposed_form.length) {
+              action.view_form = view.$exposed_form.formSerialize();
+            }
+            return false;
+          }
+        })
         
-        if (view.$exposed_form.length) {
-          action.view_form = view.$exposed_form.formSerialize();
-        }
       }
     });
   }

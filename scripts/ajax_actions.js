@@ -128,11 +128,11 @@
       
       // If we are looking at a property, add it to the data, go in another
       // level!
-      if (type != 'object') {
-        options.data[label] = value;
+      if (type == 'object' && value) {
+        Drupal.ajax.prototype.recursiveSerialize(value, options, label);
       }
       else {
-        Drupal.ajax.prototype.recursiveSerialize(value, options, label);
+        options.data[label] = value;
       }
     })
   }
