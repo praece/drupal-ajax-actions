@@ -91,7 +91,6 @@ function ajax_actions_refresh_ajax_actions_commands(&$action, &$options) {
       $node = node_load($action['nid'], NULL, TRUE);
       $view = node_view($node);
       $markup = drupal_render($view);
-      drupal_set_title($node->title);
       $selector = '.node.node-' . $node->nid;
       $action['commands'][] = ajax_command_replace($selector, $markup);
       break;

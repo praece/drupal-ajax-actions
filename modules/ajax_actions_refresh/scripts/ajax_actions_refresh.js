@@ -15,7 +15,8 @@
         $.each(Drupal.views.instances, function(index, view) {
           if (view.$view.is(action.selector)) {
             // If they do grab all of the settings and add them to ajax actions.
-            action.view_settings = view.settings;
+            var settings = $.extend({}, view.settings, action.view_settings);
+            action.view_settings = settings;
             if (view.$exposed_form.length) {
               action.view_form = view.$exposed_form.formSerialize();
             }
