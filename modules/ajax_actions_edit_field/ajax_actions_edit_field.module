@@ -1,6 +1,6 @@
 <?php
 
-function ajax_actions_edit_field($field, $ids, $value = NULL, $settings = array()) {
+function ajax_actions_edit_field($field, $ids = array(), $value = NULL, $settings = array()) {
   $defaults = array(
     'op' => 'edit_field',
     'field' => $field,
@@ -15,29 +15,27 @@ function ajax_actions_edit_field($field, $ids, $value = NULL, $settings = array(
 }
 
 function ajax_actions_edit_field_ajax_actions_commands($action) {
-  if ($action['op'] == 'edit_field') {
-    if ($action['ids']) {
-      $field_info = field_info_field($action['field']);
-      
-      if ($field_info['cardinality'] == 1) {
-        $entities = entity_load($action['type'], $action['ids']);
-        
-        foreach ($action['ids'] as $id) {
-          $entity = entity_metadata_wrapper($action['type'], $entities[$id]);
-          
-          $entity->{$action['field']}->set($action['value']);
-          $entity->save();
-          if ($action['type'] == 'node') {
-            drupal_set_message($entity->title->value() . ' has been updated.', 'status');
-          }
-          else if ($action['type'] == 'user') {
-            drupal_set_message($entity->name->value() . ' has been updated.', 'status');
-          }
+  if ($action['op'] == 'edit_field' && $action['ids']) {
+    $field_info = field_info_field($action['field']);
+
+    if ($field_info['cardinality'] == 1) {
+      $entities = entity_load($action['type'], $action['ids']);
+
+      foreach ($action['ids'] as $id) {
+        $entity = entity_metadata_wrapper($action['type'], $entities[$id]);
+
+        $entity->{$action['field']}->set($action['value']);
+        $entity->save();
+        if ($action['type'] == 'node') {
+          drupal_set_message($entity->title->value() . ' has been updated.', 'status');
+        }
+        else if ($action['type'] == 'user') {
+          drupal_set_message($entity->name->value() . ' has been updated.', 'status');
         }
       }
-      else {
-        drupal_set_message('You cannot set a multi value field\'s values using ajax actions edit field.', 'error');
-      }
+    }
+    else {
+      drupal_set_message('You cannot set a multi value field\'s values using ajax actions edit field.', 'error');
     }
   }
 }
