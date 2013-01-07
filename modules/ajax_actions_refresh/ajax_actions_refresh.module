@@ -50,29 +50,22 @@ function ajax_actions_refresh_ajax_actions_defaults_alter(&$options) {
 function ajax_actions_refresh_ajax_actions_commands(&$action, &$options) {
   switch ($action['op']) {
     case 'refresh_view':
+      // Views requires a few things to be in post and request, but we want to
+      // set them back before continuing with this ajax call, so save them here
+      // so we can reset them later.
+      $post = $_POST;
+      $request = $_REQUEST;
+
       // If we have exposed form data, grab it and put it in the post vars
       // where views ajax is expecting it.
       if ($action['view_form']) {
         parse_str($action['view_form'], $view_form);
-        
-        // Save the current post so we can reset it later.
-        $post = $_POST;
-        
-        // Grab a few things from post that views will need.
-        $view_form['ajax_html_ids'] = $post['ajax_html_ids'];
-        $view_form['ajax_page_state'] = $post['ajax_page_state'];
         $_POST = $view_form;
       }
-
-      // Save the current request vars so we can reset it later.
-      $request = $_REQUEST;
       
       // Grab a few things from request that views will need.
-      $settings = $action['view_settings'];
-      $settings['ajax_html_ids'] = $request['ajax_html_ids'];
-      $settings['ajax_page_state'] = $request['ajax_page_state'];
-      $settings['q'] = $request['q'];
-      $_REQUEST = $settings;
+      $_REQUEST = $action['view_settings'];
+      $_REQUEST['q'] = $request['q'];
       
       // Load the inc for views ajax.
       module_load_include('inc', 'views', 'includes/ajax');
