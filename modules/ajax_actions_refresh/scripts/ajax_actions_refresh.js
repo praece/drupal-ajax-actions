@@ -17,7 +17,7 @@
             // If they do grab all of the settings and add them to ajax actions.
             var settings = $.extend({}, view.settings, action.view_settings);
             action.view_settings = settings;
-            if (view.$exposed_form.length) {
+            if (view.$exposed_form.length && typeof action.view_form == 'undefined') {
               action.view_form = view.$exposed_form.formSerialize();
             }
             return false;
