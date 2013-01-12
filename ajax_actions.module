@@ -116,6 +116,8 @@ function ajax_actions_defaults(&$options) {
     $options['settings']['attributes']['id'] = 'ajax-actions-link-' . $options['settings']['dom_id'];
   }
   
+  $options['settings']['attributes']['data-ajax-actions-dom-id'] = $options['settings']['dom_id'];
+  
   drupal_alter('ajax_actions_defaults', $options);
 }
 
