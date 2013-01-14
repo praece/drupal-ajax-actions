@@ -28,10 +28,10 @@ function ajax_actions_edit_field_ajax_actions_commands($action) {
         $entity->save();
         if ($action['type'] == 'node') {
           $names = node_type_get_names();
-          drupal_set_message($names[$entity->type->value()] . ' <em>' . $entity->title->value() . '</em> has been updated.', 'status');
+          drupal_set_message($names[$entity->type->value()] . ' <em>' . $entity->title->value() . '</em> has been updated.', 'status', FALSE);
         }
         else if ($action['type'] == 'user') {
-          drupal_set_message('User <em>' . $entity->name->value() . '</em> has been updated.', 'status');
+          drupal_set_message('User <em>' . $entity->name->value() . '</em> has been updated.', 'status', FALSE);
         }
       }
     }
