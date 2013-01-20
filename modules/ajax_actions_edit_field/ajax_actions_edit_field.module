@@ -9,6 +9,12 @@ function ajax_actions_edit_field($field, $ids = array(), $value = NULL, $setting
     'type' => 'node',
   );
   
+  if ((!$settings['type'] || $settings['type'] == 'node') && !empty($defaults['ids'])) {
+    foreach ($defaults['ids'] as $id) {
+      $defaults['perm']['node_access'][] = array('op' => 'update', 'nid' => $id);
+    }
+  }
+  
   $action = array_merge($defaults, $settings);
   
   return $action;

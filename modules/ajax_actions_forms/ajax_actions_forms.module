@@ -71,6 +71,8 @@ function ajax_actions_node_add($type, $settings = array()) {
     'container' => 'body',
   );
   
+  $defaults['perm']['user_access'][] = "create $type content";
+  
   $action = array_merge($defaults, $settings);
   
   return $action;
@@ -82,6 +84,8 @@ function ajax_actions_node_edit($nid, $settings = array()) {
     'nid' => $nid,
     'container' => 'body',
   );
+  
+  $defaults['perm']['node_access'][] = array('op' => 'update', 'nid' => $nid);
   
   $action = array_merge($defaults, $settings);
   
