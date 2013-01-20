@@ -40,6 +40,8 @@ function ajax_actions_forms_form_alter(&$form, &$form_state, $form_id) {
     // Add the #ajax array to the submit handlers.
     foreach (element_children($form['actions']) as $key) {
       $form['actions'][$key]['#ajax'] = $ajax;
+      $form['actions'][$key]['#attributes']['id'] = 'ajax-actions-submit-' . $ajax['ajax_actions']['settings']['dom_id'];
+      $form['actions'][$key]['#id'] = 'ajax-actions-submit-' . $ajax['ajax_actions']['settings']['dom_id'];
     }
   }
 }
