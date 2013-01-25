@@ -5,6 +5,15 @@
 (function ($) {
   
   Drupal.ajax = Drupal.ajax || {};
+  Drupal.ajax.prototype = Drupal.ajax.prototype || {};
+  Drupal.ajax.prototype.commands = Drupal.ajax.prototype.commands || {};
+  
+  /**
+   * Add a command to redirect.
+   */
+  Drupal.ajax.prototype.commands.redirect = function(ajax, response, status) {
+    window.location = response.url;
+  }
   
   /**
   * Handle an event that triggers an Ajax response.

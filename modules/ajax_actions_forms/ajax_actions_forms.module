@@ -62,6 +62,10 @@ function ajax_actions_form_process(&$action, &$options) {
     }
   }
   
+  // If the form was executed set the clicked button in the action so other
+  // hooks can use this information.
+  $action['clicked_button'] = $form_state['clicked_button'];
+  
   // If the form was executed set the nid in the action.
   $action['nid'] = $form_state['nid'];
 }
