@@ -8,7 +8,7 @@
         .once('ajax-actions-forms-enter-submit')
         .on('keydown', function(event) {
           if (event.which == '13') {
-            $(this).closest('form').find('.form-actions input.ajax-processed').trigger('mousedown');
+            $(this).closest('form').find('.form-actions input.ajax-processed:first').trigger('mousedown');
             return false;
           }
         });
