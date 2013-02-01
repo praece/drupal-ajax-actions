@@ -1,16 +1,14 @@
 <?php
 
 function ajax_actions_forms_ajax_actions_commands(&$action, &$options) {
-  if ($action['op'] == 'process_form') {
-    $form = ajax_actions_form_process($action, $options);
-  }
-  
-  if ($action['op'] == 'node_add_form') {
-    $form = ajax_actions_node_form_build($action, $options);
-  }
-  
-  if ($action['op'] == 'node_edit_form') {
-    $form = ajax_actions_node_form_build($action, $options);
+  switch ($action['op']) {
+    case 'process_form':
+      $form = ajax_actions_form_process($action, $options);
+      break;
+    case 'node_add_form':
+    case 'node_edit_form':
+    case 'node_delete_form':
+      $form = ajax_actions_node_form_build($action, $options);
   }
   
   if ($form) {
@@ -39,9 +37,12 @@ function ajax_actions_forms_form_alter(&$form, &$form_state, $form_id) {
     
     // Add the #ajax array to the submit handlers.
     foreach (element_children($form['actions']) as $key) {
-      $form['actions'][$key]['#ajax'] = $ajax;
-      $form['actions'][$key]['#attributes']['id'] = 'ajax-actions-submit-' . $ajax['ajax_actions']['settings']['dom_id'];
-      $form['actions'][$key]['#id'] = 'ajax-actions-submit-' . $ajax['ajax_actions']['settings']['dom_id'];
+      if ($form['actions'][$key]['#type'] == 'submit') {
+        $form['actions'][$key]['#ajax'] = $ajax;
+        $dom_id = $ajax['ajax_actions']['settings']['dom_id'];
+        $form['actions'][$key]['#attributes']['id'] = "ajax-actions-$key-$dom_id";
+        $form['actions'][$key]['#id'] = "ajax-actions-$key-$dom_id";
+      }
     }
   }
 }
@@ -98,6 +99,20 @@ function ajax_actions_node_edit($nid, $settings = array()) {
   return $action;
 }
 
+function ajax_actions_node_delete($nid, $settings = array()) {
+  $defaults = array(
+    'op' => 'node_delete_form',
+    'nid' => $nid,
+    'container' => 'body',
+  );
+  
+  $defaults['perm']['node_access'][] = array('op' => 'delete', 'nid' => $nid);
+  
+  $action = array_merge($defaults, $settings);
+  
+  return $action;
+}
+
 function ajax_actions_node_add_form($type, $actions = array(), $settings = array(), $action = array()) {
   $defaults = array('type' => $type);
   
@@ -147,8 +162,13 @@ function ajax_actions_node_form_build($action, $options) {
     );
   }
   
-  $type = $node->type;
-  $form_id = $type . '_node_form';
+  if ($action['op'] == 'node_add_form' || $action['op'] == 'node_edit_form') {
+    $type = $node->type;
+    $form_id = $type . '_node_form';
+  }
+  else if ($action['op'] == 'node_delete_form') {
+    $form_id = 'node_delete_confirm';
+  }
   
   $ajax['settings'] = array();
   $ajax['actions'] = array_slice($options['actions'], array_search($action['delta'], array_keys($options['actions'])) + 1);
