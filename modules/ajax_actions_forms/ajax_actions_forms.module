@@ -9,6 +9,10 @@ function ajax_actions_forms_ajax_actions_commands(&$action, &$options) {
     case 'node_edit_form':
     case 'node_delete_form':
       $form = ajax_actions_node_form_build($action, $options);
+      break;
+    case 'user_add_form':
+      $form = ajax_actions_user_add_form_build($action, $options);
+      break;
   }
   
   if ($form) {
@@ -68,7 +72,14 @@ function ajax_actions_form_process(&$action, &$options) {
   $action['clicked_button'] = $form_state['clicked_button'];
   
   // If the form was executed set the nid in the action.
-  $action['nid'] = $form_state['nid'];
+  if ($form_state['nid']) {
+    $action['nid'] = $form_state['nid'];
+  }
+  
+  // If the form was executed set the nid in the action.
+  if ($form_state['values']['uid'] && $form_id == 'user_register_form') {
+    $action['uid'] = $form_state['values']['uid'];
+  }
 }
 
 function ajax_actions_node_add($type, $settings = array()) {
@@ -107,6 +118,19 @@ function ajax_actions_node_delete($nid, $settings = array()) {
   );
   
   $defaults['perm']['node_access'][] = array('op' => 'delete', 'nid' => $nid);
+  
+  $action = array_merge($defaults, $settings);
+  
+  return $action;
+}
+
+function ajax_actions_user_add($settings = array()) {
+  $defaults = array(
+    'op' => 'user_add_form',
+    'container' => 'body',
+  );
+  
+  $defaults['perm']['user_access'][] = 'administer users';
   
   $action = array_merge($defaults, $settings);
   
@@ -191,6 +215,31 @@ function ajax_actions_node_form_build($action, $options) {
   $form_state['build_info']['files'][] = array('type' => 'inc', 'module' => 'node', 'name' => 'node.pages');
   
   module_load_include('inc', 'node', 'node.pages');
+  
+  return drupal_build_form($form_id, $form_state);
+}
+
+function ajax_actions_user_add_form_build($action, $options) {
+  $form_id = 'user_register_form';
+  
+  $ajax['settings'] = array();
+  $ajax['actions'] = array_slice($options['actions'], array_search($action['delta'], array_keys($options['actions'])) + 1);
+  
+  $process[$action['delta']] = array('op' => 'process_form');
+  $process[$action['delta']]['callback'] = $action['callback'] ? $action['callback'] : NULL;
+  
+  $ajax['actions'] = $process + $ajax['actions'];
+  
+  ajax_actions_defaults($ajax);
+  
+  $form_state['build_info']['args'] = array();
+  $form_state['build_info']['ajax'] = ajax_actions_build_ajax($ajax);
+  
+  if ($action['build_info']) {
+    $form_state['build_info'] = array_merge($form_state['build_info'], $action['build_info']);
+  }
+  
+  $form_state['cache'] = true;
   
   return drupal_build_form($form_id, $form_state);
 }
